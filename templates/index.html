@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Arial", sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(-45deg, #ff416c, #ff4b2b, #1f4037, #99f2c8);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .greeting {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+
+        .upload-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+            width: 420px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            padding: 12px;
+            display: inline-block;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .custom-file-upload:hover {
+            background: white;
+            color: #ff416c;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 200px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-bottom: 15px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            background: white;
+            color: #ff416c;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            width: 48%;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #ff416c;
+            color: white;
+        }
+
+        .clear-button {
+            background: white;
+            color: #ff4b2b;
+        }
+
+        .clear-button:hover {
+            background: #ff4b2b;
+            color: white;
+        }
+
+        .result-box {
+            margin-top: 15px;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+            color: white;
+        }
+
+        .fake {
+            background: linear-gradient(to right, #ff0000, #ff7373);
+        }
+
+        .real {
+            background: linear-gradient(to right, #008000, #66cc66);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="greeting">Hello, Welcome to Deepfake Detection!</div>
+    <div class="upload-text">Upload Your Image:</div>
+    <label for="fileInput" class="custom-file-upload">Choose an Image</label>
+    <input type="file" id="fileInput" required>
+
+    <div class="container">
+        <div class="image-preview" id="imagePreview">No Image Selected</div>
+        <div class="button-group">
+            <button id="detectButton">Detect Deepfake</button>
+            <button id="clearButton" class="clear-button">Clear</button>
+        </div>
+        <div id="result" class="result-box">Waiting for Prediction...</div>
+    </div>
+
+    <script>
+        let fileInput = document.getElementById("fileInput");
+        let imagePreview = document.getElementById("imagePreview");
+        let detectButton = document.getElementById("detectButton");
+        let clearButton = document.getElementById("clearButton");
+        let resultBox = document.getElementById("result");
+
+        fileInput.addEventListener("change", function () {
+            let file = fileInput.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    imagePreview.innerHTML = `<img src="${e.target.result}" alt="Selected Image">`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.innerHTML = "No Image Selected";
+            }
+        });
+
+        detectButton.addEventListener("click", function () {
+            let file = fileInput.files[0];
+            if (!file) {
+                alert("Please select an image first!");
+                return;
+            }
+            let formData = new FormData();
+            formData.append("file", file);
+
+            fetch("/predict", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resultClass = data.label === "Fake" ? "fake" : "real";
+                resultBox.style.display = "block";
+                resultBox.className = `result-box ${resultClass}`;
+                resultBox.innerHTML = `Prediction: <strong>${data.label}</strong><br>Confidence: <strong>${(data.confidence * 100).toFixed(2)}%</strong>`;
+                
+                if (data.label === "Fake") {
+                    alert("Warning! Fake image detected.");
+                }
+
+                setTimeout(() => {
+                    alert("Thank you for using Deepfake Detection!");
+                }, 2000);
+            });
+        });
+
+        clearButton.addEventListener("click", function () {
+            fileInput.value = "";
+            imagePreview.innerHTML = "No Image Selected";
+            resultBox.style.display = "none";
+        });
+    </script>
+</body>
+</html>
